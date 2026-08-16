@@ -1,36 +1,86 @@
-An exmaination of bird sighting data for the Netherlands
+# Bird sightings in the Netherlands (eBird, 2015–2023)
 
-Description: This project takes a closer look at the relationships between data for bird sightings in The Netherlands.
+An exploratory analysis of citizen-science bird observations in the
+Netherlands: what gets seen, when, where, and whether the way people observe
+changes what they report. Built as the mid-course project of the Ironhack Data
+Analytics bootcamp (2023).
 
-Questions:
+![Sightings vs population by province](images/regression_sightings_population_labeled.png)
 
-1. What birds are the most frequently sighted in The Netherlands? What can we see if we look at sightings by days of the week?
+## Data
 
-2. Which areas in The Netherlands has more sightings and does the time of year have any significance (seasonality)?
-   
-3. Investigate the number of observations for the following types of the observation protocols (what the observer was doing): 
-   Stationary, Travelling, Historical and Incidental. What do we learn?
+- **eBird Basic Dataset** (Cornell Lab of Ornithology, release Aug 2023),
+  Netherlands subset, Jan 2015 – Sep 2023. ~1.8 M observation records,
+  50 columns, ~600 MB tab-separated. Stored here via Git LFS.
+- **CBS StatLine** population by province, 2023.
 
-4. Determine if there is a statistical dependency between birds observed and protocol type (the way they were observed). 
-   Which statistical test should we use and why?
+The analysis in the notebook runs on a random 10,000-row sample of the eBird
+file so it stays fast on a laptop; the pipeline is the same on the full file.
+After dropping empty or single-valued columns (country, county, IBA/BCR/USFWS
+codes, atlas block, project code, group identifier, etc.) the working set is
+31 columns.
 
-5. Is population in areas a significant predictor of no. of sightings? Perform OLS-regression and share insights.
+## Questions & findings
 
+**1. What gets seen most?**
+271 species in the sample. The top of the list is exactly what you'd expect
+in a Dutch garden or polder: Eurasian Coot, Mallard, Blackbird, Wood-Pigeon,
+Carrion Crow, Great Tit, Greylag Goose, Black-headed Gull, Magpie, Blue Tit.
+A long tail — over a third of species appear five times or fewer.
 
-Source of data:
+![Top 30 species](images/bird_sightings.png)
 
-eBird Basic Dataset. Version: EBD_relAug-2023. Cornell Lab of Ornithology, Ithaca, New York. Aug 2023. https://ebird.org/home
+**2. When do people look?**
+Sightings roughly double at the weekend: ~2,000 per day on Saturday and
+Sunday vs ~1,050–1,200 Monday–Thursday, with Friday in between. This is a
+pattern in *observer effort*, not bird behaviour — a useful reminder that
+citizen-science data measures people as much as wildlife.
 
-Centraal Bureau voor de Statistiek, 2023 https://opendata.cbs.nl/
+![Sightings by day of week](images/bird_sightings_by_day.png)
 
-Findings: 
+**3. Where?**
+Noord-Holland (1,955) and Zuid-Holland (1,621) dominate; Drenthe (192) and
+Limburg (360) trail. Regressing sightings on province population with OLS
+gives **R² = 0.73** (p = 0.0004, n = 12): population explains most of the
+variance, so a province "having more birds" is largely a province having more
+people with binoculars. Zeeland is the interesting outlier — far more sightings
+than its population predicts, consistent with it being a birding destination.
 
-There are a wide variety of birds observed in The Netherlands. The most common are listed in the presentation.
-The frequency of birds observed varies greatly by theday of the week and the month/season.
-The sightings also vary greatly in number by province.
-The sightings also depend on how the birds are being observed.
-There is corellation between sightings and provinces of The Netherlands.
-There is a statistical corellation between sightings and type of observation.
+**4. Does the observation protocol change what is reported?**
+eBird records how the observer was observing: Traveling (75%), Stationary
+(15%), Incidental (6%), Historical (3%). A χ² test of independence between
+species and protocol type on the raw counts is hugely significant
+(χ² = 1325, p ≈ 10⁻²⁸) — but that table is full of cells with expected counts
+below 5, which inflates χ². Restricting to species with ≥5 observations per
+protocol, the test no longer rejects independence (p ≈ 1). The honest
+conclusion is that the *common* species are seen under every protocol in
+similar proportions, and the apparent dependence comes from rare species
+appearing once under one method.
 
+![Sightings by protocol type](images/bird_sightings_by_type_histo.png)
 
-Conclusions :
+## What I'd do next
+
+Run on the full 1.8 M rows; add seasonality (month) properly; normalise
+sightings by observer effort (duration, distance) rather than raw counts;
+map sightings with province shapefiles.
+
+## Repo layout
+
+```
+notebooks/Data_Bird.ipynb   full analysis (pandas, seaborn, scipy, statsmodels)
+data/raw/                   eBird extract (LFS) + CBS population CSV
+data/cleaned/               pruned working dataset
+images/                     charts used above and in the slides
+slides/                     presentation deck
+```
+
+## Run it
+
+```bash
+pip install -r requirements.txt
+git lfs pull                       # fetch the eBird file
+jupyter notebook notebooks/Data_Bird.ipynb
+```
+
+Data © Cornell Lab of Ornithology; see `data/raw/terms_of_use.txt`.
